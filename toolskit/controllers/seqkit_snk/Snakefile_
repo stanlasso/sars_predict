@@ -1,0 +1,44 @@
+import matplotlib.pyplot as plt
+import pandas
+import subprocess
+import os
+
+
+os.system('rm -fr ./uploads/res/img')
+os.system('rm -fr ./uploads/graph.zip')
+os.system('mkdir -p ./uploads/res/img')
+
+
+plt.figure(figsize = (8, 8)) 
+
+sm = []
+mh = []
+pm = []
+pu = []
+excel_data_df = pandas.read_excel('Excel.xlsx', sheet_name='Sheet 1')
+
+# print whole sheet data
+print(excel_data_df)
+nm = excel_data_df['Name'].tolist()
+mh = excel_data_df['Host_mapped'].tolist()
+pm = excel_data_df['Patho_mapped'].tolist()
+pu = excel_data_df['Patho_unmapped'].tolist()
+i=2
+for i in range(1,len(nm)):
+    x = []
+    print(nm[i])
+    x = [mh[i], pm[i], pu[i]]
+    plt.pie(x, labels = ['Host mapped', 'Patho mapped', 'Patho unmapped'],
+    autopct=lambda x : str(round(x,2)) +'%')
+    plt.savefig('./uploads/res/img/'+nm[i]+'.png')
+    
+
+
+
+
+   # agrandir l'affichage
+
+
+
+
+    

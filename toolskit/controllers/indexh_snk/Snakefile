@@ -1,0 +1,36 @@
+configfile: "config.yaml"
+# -----pour faciliter le positionnement des autres dossiers nécessaires reativement à celui-ci si nécessaire
+#dossier_ori_data_raw = input ("entrer le dossier source : " )
+#dossier_ori_data_raw = "/Users/acquahpatriciahotmail.com/ws/data"
+dossier_ori_data_raw = config["ENVS"]["home"]+"/uploads/references/human"
+path_dossier_ori_data_raw = Path(dossier_ori_data_raw)
+#dossier_parametre_file = "/Users/acquahpatriciahotmail.com/Documents/covid/data_exo_stan/snake_cov_exo_stan1/parametres/parametre.csv"
+#path_qc_parametre_file = path_dossier_ori_data_raw.parent / "parametres/parametre.csv"
+path_dossier_ori_parent = path_dossier_ori_data_raw.parent
+####### les transformations suivantes sont faites pour obtenir dans une liste ordonnée
+
+# les noms brutes de tous les runs dans le dossier source des données brutes
+# utilise une loop for pour obtenir donne ss forme de liste la totalité des .fastq dans le dossier_ori_data_raw
+# glob permet de récupérer les paths des fichiers dans le dossier_ori respectant la reg "*.fastq.gz"
+
+###########faire attention si les fichiers sont d'un autre type
+samples = []
+sample = []
+sample = expand(config["samples"])
+for f in sample:
+    f = config["samples"][f]
+    samples.append(f)
+
+
+print(samples)
+#path_dossier_ori_glob = path_dossier_ori_data_raw.glob('*.fastq.gz')
+#faire une liste des noms des fichiers avec Path.name, les réduire aux noms brutes, en faire un set pour éliminer les doublons du au Pair end
+#remettre sous forme de liste pour pouvoir les ordonner avec sorted 
+#samples = sorted(list(set([i.name.split("_")[0] for i in path_dossier_ori_glob]))) 
+#permet de donner une extension pour l'analyse des seq froward and reverse
+print(dossier_ori_data_raw)
+rule index : 
+    input : 
+        expand("uploads/references/human/{sample}",sample=samples)
+    shell : 
+        "bwa index {input}"

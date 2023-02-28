@@ -1,0 +1,104 @@
+configfile: "config.yaml"
+#import copy
+        #######on donne le dossier d'origine des données fastq brute à analyser et on initialise son path avec "Path"
+hu= config["references"]["human"]
+pa= config["references"]["parasite"]
+# -----pour faciliter le positionnement des autres dossiers nécessaires reativement à celui-ci si nécessaire
+#dossier_ori_data_raw = input ("entrer le dossier source : " )
+#dossier_ori_data_raw = "/Users/acquahpatriciahotmail.com/ws/data"
+dossier_ori_data_raw = config["ENVS"]["home"]+"/uploads/dbsub"
+path_dossier_ori_data_raw = Path(dossier_ori_data_raw)
+#dossier_parametre_file = "/Users/acquahpatriciahotmail.com/Documents/covid/data_exo_stan/snake_cov_exo_stan1/parametres/parametre.csv"
+#path_qc_parametre_file = path_dossier_ori_data_raw.parent / "parametres/parametre.csv"
+path_dossier_ori_parent = path_dossier_ori_data_raw.parent
+
+
+        ####### les transformations suivantes sont faites pour obtenir dans une liste ordonnée
+
+# les noms brutes de tous les runs dans le dossier source des données brutes
+# utilise une loop for pour obtenir donne ss forme de liste la totalité des .fastq dans le dossier_ori_data_raw
+# glob permet de récupérer les paths des fichiers dans le dossier_ori respectant la reg "*.fastq.gz"
+
+###########faire attention si les fichiers sont d'un autre type
+samples = []
+sample = []
+sample = expand(config["samples"])
+for f in sample:
+    f = config["samples"][f]
+    samples.append(f)
+
+
+print(samples)
+#path_dossier_ori_glob = path_dossier_ori_data_raw.glob('*.fastq.gz')
+#faire une liste des noms des fichiers avec Path.name, les réduire aux noms brutes, en faire un set pour éliminer les doublons du au Pair end
+#remettre sous forme de liste pour pouvoir les ordonner avec sorted 
+#samples = sorted(list(set([i.name.split("_")[0] for i in path_dossier_ori_glob]))) 
+#permet de donner une extension pour l'analyse des seq froward and reverse
+pes = [1,2]
+
+ 
+print(dossier_ori_data_raw)
+rule all:
+    input :
+        expand(path_dossier_ori_parent / "res/dbsub/Patho_unmapped_{sample}1.fastq",sample=samples),
+        expand(path_dossier_ori_parent / "res/dbsub/Patho_unmapped_{sample}2.fastq",sample=samples),
+        expand(path_dossier_ori_parent / "res/dbsub/Patho_mapped_{sample}1.fastq",sample=samples),
+        expand(path_dossier_ori_parent / "res/dbsub/Patho_mapped_{sample}2.fastq",sample=samples)
+rule host_align : 
+    input : 
+        R1=path_dossier_ori_parent / "dbsub/{sample}1.fastq.gz",
+        R2=path_dossier_ori_parent / "dbsub/{sample}2.fastq.gz",
+        #ref=path_dossier_ori_parent / "references/human/GCF_000001405.39_GRCh38.p13_genomic.fna.gz"
+        ref=path_dossier_ori_parent / "references/human" / str(hu)
+    output : 
+        path_dossier_ori_parent / "res/dbsub/Host_align_{sample}.sam"
+    shell : 
+        "bwa mem {input.ref} {input.R1} {input.R2} > {output}"
+rule host_unmapped_and_host_mapped : 
+    input :
+        path_dossier_ori_parent / "res/dbsub/Host_align_{sample}.sam"
+    output :
+        R1=path_dossier_ori_parent / "res/dbsub/Host_unmapped_{sample}.bam",
+        R2=path_dossier_ori_parent / "res/dbsub/Host_mapped_{sample}.bam"
+    shell :
+        "samtools view -Sb -f0x4 {input} > {output.R1} && samtools view -Sb -F0x4 {input} > {output.R2}"
+rule host_unmapped_fq_and_host_mapped_fq :
+    input :
+        R1=path_dossier_ori_parent / "res/dbsub/Host_unmapped_{sample}.bam",
+        R2=path_dossier_ori_parent / "res/dbsub/Host_mapped_{sample}.bam"
+    output :
+        R1=path_dossier_ori_parent / "res/dbsub/Host_unmapped_{sample}1.fastq",
+        R2=path_dossier_ori_parent / "res/dbsub/Host_unmapped_{sample}2.fastq",
+        R3=path_dossier_ori_parent / "res/dbsub/Host_mapped_{sample}1.fastq",
+        R4=path_dossier_ori_parent / "res/dbsub/Host_mapped_{sample}2.fastq"
+    shell :
+        "samtools bam2fq -1 {output.R1} -2 {output.R2} -0 /dev/null -s /dev/null -n -F 0x900 {input.R1} && samtools bam2fq -1 {output.R3} -2 {output.R4} -0 /dev/null -s /dev/null -n -F 0x900 {input.R2}"
+rule patho_align :
+    input :
+        R1=path_dossier_ori_parent / "res/dbsub/Host_unmapped_{sample}1.fastq",
+        R2=path_dossier_ori_parent / "res/dbsub/Host_unmapped_{sample}2.fastq",
+        ref=path_dossier_ori_parent / "references/parasite/" / str(pa)
+    output :
+        path_dossier_ori_parent / "res/dbsub/Patho_align_{sample}.sam"
+    shell :
+        "bwa mem {input.ref} {input.R1} {input.R2} > {output}"
+rule patho_mapped_and_patho_unmapped :
+    input :
+        path_dossier_ori_parent / "res/dbsub/Patho_align_{sample}.sam"
+    output :
+        R1=path_dossier_ori_parent / "res/dbsub/Patho_mapped_{sample}.bam",
+        R2=path_dossier_ori_parent / "res/dbsub/Patho_unmapped_{sample}.bam"
+    shell :
+        "samtools view -Sb -F0x4 {input} > {output.R1} && samtools view -Sb -f0x4 {input} > {output.R2}"
+rule patho_unmapped_fq_and_patho_mapped_fq :
+    input :
+        R1=path_dossier_ori_parent / "res/dbsub/Patho_mapped_{sample}.bam",
+        R2=path_dossier_ori_parent / "res/dbsub/Patho_unmapped_{sample}.bam"
+    output :
+        R1=path_dossier_ori_parent / "res/dbsub/Patho_unmapped_{sample}1.fastq",
+        R2=path_dossier_ori_parent / "res/dbsub/Patho_unmapped_{sample}2.fastq",
+        R3=path_dossier_ori_parent / "res/dbsub/Patho_mapped_{sample}1.fastq",
+        R4=path_dossier_ori_parent / "res/dbsub/Patho_mapped_{sample}2.fastq"
+    shell :
+        "samtools bam2fq -1 {output.R3} -2 {output.R4} -0 /dev/null -s /dev/null -n -F 0x900 {input.R1} && samtools bam2fq -1 {output.R1} -2 {output.R2} -0 /dev/null -s /dev/null -n -F 0x900 {input.R2}"
+

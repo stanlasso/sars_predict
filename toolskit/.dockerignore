@@ -1,0 +1,13 @@
+node_modules
+controllers
+data
+middleware
+routes
+uploads
+.dockerignore
+.gitignore
+.Dockerfile
+.server.js
+.app.js
+.git
+.package.json

@@ -1,0 +1,87 @@
+configfile: "config.yaml"
+pa= config["references"]["parasite"]
+dossier_ori_data_raw = config["ENVS"]["home"]+"/uploads/data"
+path_dossier_ori_data_raw = Path(dossier_ori_data_raw)
+path_dossier_ori_parent = path_dossier_ori_data_raw.parent
+samples = []
+sample = []
+chroms = []
+chrom = []
+sample = expand(config["samples"])
+for f in sample:
+    f = config["samples"][f]
+    samples.append(f)
+chrom = expand(config["chroms"])
+for f in chrom:
+    f = config["chroms"][f]
+    chroms.append(f)
+print(samples)
+print(chroms)
+pes = [1,2]
+print(dossier_ori_data_raw)
+
+
+rule all:
+    input :
+        expand(path_dossier_ori_parent / "res/cons/consensus_{sample}.fasta",sample=samples)
+rule assemblage : 
+    input : 
+        R1=path_dossier_ori_parent / "res/dbsub/{sample}1.fastq",
+        R2=path_dossier_ori_parent / "res/dbsub/{sample}2.fastq"
+        #R2=path_dossier_ori_parent / "res/dbsub/Patho_mapped_{sample}2.fastq"
+    output : 
+        out_dir = directory(path_dossier_ori_parent / "res/cons/{sample}"),
+        fasta = path_dossier_ori_parent / "res/cons/{sample}/final.contigs.fa"
+        #expand(path_dossier_ori_parent / "res/cons/{sample}.contigs.fa",sample=samples)
+    shell : 
+        "megahit -1 {input.R1} -2 {input.R2} -f -o {output.out_dir}"
+
+rule cons_sam : 
+    input :
+        dir=path_dossier_ori_parent / "res/cons/{sample}",
+        fa=path_dossier_ori_parent / "res/cons/{sample}/final.contigs.fa",
+        ref=path_dossier_ori_parent / "references/parasite/" / str(pa)
+    output : 
+        path_dossier_ori_parent / "res/cons/{sample}.sam"
+    shell : 
+        "minimap2 --secondary=no -a {input.ref} {input.fa} -o {output}"
+"""rule cons_bam : 
+    input :
+        path_dossier_ori_parent / "res/cons/{sample}.sam",
+    output : 
+        path_dossier_ori_parent / "res/cons/{sample}.bam"
+    shell : 
+        "samtools view -S -h -b {input} | samtools sort > {output} && samtools index {output}"
+rule cons_vcf : 
+    input :
+        bam=path_dossier_ori_parent / "res/cons/{sample}.bam",
+        ref=path_dossier_ori_parent / "references/parasite/" / str(pa)
+    output : 
+        path_dossier_ori_parent / "res/cons/{sample}.vcf"
+    shell : 
+        "bcftools mpileup -f {input.ref} {input.bam} | bcftools call --ploidy 1 -cv -o {output}"
+rule cons_vcf_bgzip  : 
+    input :
+        path_dossier_ori_parent / "res/cons/{sample}.vcf"
+    output : 
+        path_dossier_ori_parent / "res/cons/{sample}.vcf.gz"
+    shell : 
+        "bgzip {input} && tabix {output}"
+rule cons : 
+    input :
+        cons_=path_dossier_ori_parent / "res/cons",
+        cons=path_dossier_ori_parent / "res/cons/{sample}",
+        R=path_dossier_ori_parent / "res/cons/{sample}.vcf.gz",
+        ref=path_dossier_ori_parent / "references/parasite/" / str(pa)
+    output : 
+        path_dossier_ori_parent / "res/cons/consensus_{sample}.fasta"
+    shell : 
+        "cat {input.ref} | bcftools consensus {input.R} > {output} && rm -fr {input.cons} {input.cons_}/*vcf* {input.cons_}/*am*"
+
+
+
+
+
+
+        
+

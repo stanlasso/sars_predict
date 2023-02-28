@@ -1,0 +1,29 @@
+import tempfile
+import os
+import glob
+import webbrowser
+configfile: "config.yaml"
+SAMPLE = []
+SAMPLE_EXT = []
+EXT = []
+I = 0
+EXTS = expand(config["extensions"])
+for f in EXTS:
+    f = config["extensions"][f]
+    EXT.append(f)
+SAMPLES = expand(config["samples"])
+for f in SAMPLES:
+    f = config["samples"][f].replace("."+EXT[I], '')
+    SAMPLE.append(f)
+    I=I+1
+for e in SAMPLES:
+    e = config["samples"][e]
+    SAMPLE_EXT.append(e)
+print(EXT)
+print(SAMPLE)
+print(SAMPLE_EXT)
+rule fastqc:
+    input:
+        expand("uploads/data/{sample_ext}",sample_ext=SAMPLE_EXT)
+    shell:
+        "fastqc {input} -o uploads/res/fastq/"

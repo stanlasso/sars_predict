@@ -1,0 +1,767 @@
+const os = require('os');
+var express = require('express');
+var path = require('path');
+const util = require("util");
+const { exec } = require("child_process");
+const execProm = util.promisify(exec);
+
+
+const {
+    spawn
+} = require("child_process");
+var app = express();
+var bodyParser = require('body-parser');
+const fs = require('fs');
+var bodyParser = require('body-parser');
+const open = require('open-html');
+var http = require('http');
+const execSync = require('child_process').execSync;
+var mime = require('mime');
+const parameters = require('../controllers/parameters');
+//// Mes fonctions pour python
+function checkGenome(fichier) {
+    const fs = require("fs")
+    var file_existe;
+    const path = fichier.split('.')
+    if (path[path.length - 1] == 'sa') {
+        file_existe = true
+    } else {
+        file_existe = false
+    }
+    return file_existe
+}
+function runYamlFile(samples) {
+
+    fs.writeFile('config.yaml', samples, function (err) {
+        if (err) {
+            throw err;
+            //console.log(err);
+        } else {
+            //res.send('Config.yaml create \n');
+            console.log("Config.yaml generate");
+
+        }
+    });
+
+
+}
+function runSnakefile(snakefile_repertory, dir) {
+    let sep;
+    tab = []
+    var conda_path = '~/miniconda3/etc/profile.d/conda.sh'
+    var commands = [
+        conda_path,
+        conda_path + ' init',
+        conda_path + ' activate snakemake',
+        '~/miniconda3/condabin/conda run -v -n snakemake snakemake --cores all',
+    ]
+
+    function run_shell_command(command, callback) {
+        exec(command, function (err, stdout, stderr) {
+            if (err) {
+                callback(stderr, null);
+            } else {
+                callback(null, stdout);
+            }
+        });
+    }
+    run_shell_command('cp ' + snakefile_repertory + 'Snakefile . && mkdir ' + dir && commands.join(' & '), function (err, res) {
+        //  console.log(sep, res)
+        if (err) {
+            // Do something with your error
+            /*  sep = false
+             return sep, res */
+            console.log(err)
+            sep = err
+        }
+        else {
+            /* sep = true
+            return sep, res */
+            console.log(res)
+            sep = res
+        }
+    });
+    return sep
+}
+function runGetExtension(datas) {
+    let temp = [];
+    var tab = []
+    for (i = 0; i < datas.length; i++) {
+        temp = datas[i].split('.');
+        console.log(temp[temp.length - 1]);
+        switch (temp[temp.length - 1]) {
+            case 'fastq':
+                console.log('fastq');
+                tab.push('fastq');
+                break
+            case 'fq':
+                console.log('fq');
+                tab.push('fq');
+                break;
+            case 'gz':
+                console.log('gz');
+                if (temp[temp.length - 2] == "fastq") {
+                    console.log('fastq.gz');
+                    tab.push('fastq.gz');
+                } else {
+                    console.log('fq.gz');
+                    tab.push('fq.gz');
+                }
+                break;
+        }
+    }
+    return tab
+}
+function runGetMaqIDold(datas) {
+    var maq = '';
+    let temp = [];
+    var separate = ['_R1.', '_R2.', '_R.', '.R.', '_1.', '_2.', '.1.', '.2.'];
+    separate.forEach(function (item, index, array) {
+        if (datas.split(item).length == 2) {
+            //console.log(datas.split(item)[1])
+            console.log('Paire-end file')
+            maq = datas.split(item)[1];
+        } else {
+            temp = datas.split('.');
+            // console.log(temp[temp.length - 1]);
+            console.log('Single file')
+            switch (temp[temp.length - 1]) {
+                case 'fastq':
+                    console.log('fastq');
+                    maq = 'fastq';
+                    break
+                case 'fq':
+                    console.log('fq');
+                    maq = 'fq';
+                    break;
+                case 'gz':
+                    console.log('gz');
+                    if (temp[temp.length - 2] == "fastq") {
+                        console.log('fastq.gz');
+                        maq = 'fastq.gz';
+                    } else {
+                        console.log('fq.gz');
+                        maq = 'fq.gz';
+                    }
+                    break;
+            }
+        }
+    });
+    return maq;
+}
+function runGetMaqIDOlds(datas) {
+    var ext = [];
+    var temp = [];
+    let pairend = [];
+    let singlend = [];
+    var separate = ['_R1.', '_1.', '.1.', '_R2.', '_2.', '.2.'];
+    datas.forEach(function (item, index, array) {
+        for (let pas = 0; pas < separate.length; pas++) {
+            console.log(pas, item.split(separate[pas])[0], item.split(separate[pas]).length, separate[pas])
+            if (item.split(separate[pas]).length == 2) {
+                pairend.push(item.split(separate[pas])[0])
+                ext.push(item.split(separate[pas])[1])
+                /* } else {
+                     singlend.push(item.split('.')[0])
+                     temp = item.split('.');
+                     switch (temp[temp.length - 1]) {
+                         case 'fastq':
+                             ext.push('fastq');
+                             break
+                         case 'fq':
+                             ext.push('fq');
+                             break;
+                         case 'gz':
+                             if (temp[temp.length - 2] == "fastq") {
+                                 ext.push('fastq.gz');
+                             } else {
+                                 ext.push('fq.gz');
+                             }
+                             break;
+                     }*/
+            }
+        }
+    })
+
+    console.log('pairend = ' + pairend)
+    console.log('singlend = ' + singlend)
+
+    console.log('pairend ext = ' + pairend)
+    console.log('singlend ext = ' + singlend)
+
+
+
+
+
+    /*separate.forEach(function (item, index, array) {
+        if (datas.split(item).length == 2) {
+            //console.log(datas.split(item)[1])
+            console.log('Paire-end file')
+            maq = datas.split(item)[1];
+        } else {
+            temp = datas.split('.');
+            // console.log(temp[temp.length - 1]);
+            console.log('Single file')
+            switch (temp[temp.length - 1]) {
+                case 'fastq':
+                    console.log('fastq');
+                    maq = 'fastq';
+                    break
+                case 'fq':
+                    console.log('fq');
+                    maq = 'fq';
+                    break;
+                case 'gz':
+                    console.log('gz');
+                    if (temp[temp.length - 2] == "fastq") {
+                        console.log('fastq.gz');
+                        maq = 'fastq.gz';
+                    } else {
+                        console.log('fq.gz');
+                        maq = 'fq.gz';
+                    }
+                    break;
+            }
+        }
+    });
+    return maq;*/
+}
+function runGetMaqID(datas) {
+    //var data = datas.sort()
+    //console.log(datas, data)
+    var extp = [];
+    var exts = [];
+    var temp = [];
+    var temp2 = [];
+    var name = [];
+    let pairend = [];
+    let paire = [];
+    let singlend = datas;
+    var separate1 = ['_R1.', '_1.', '.1.', '_R2.', '_2.', '.2.'];
+    /*  let sep
+let tempsep = []
+   let tsep = []*/
+    separate1.forEach(function (item, index, array) {
+        datas.forEach(function (item2, index, array) {
+            if (item.search('R') != -1) {
+                sep = item.split('R')[0] + 'R'
+            } else if (item.search('_') != -1 && item.search('R') == -1) {
+                sep = '_'
+            } else {
+                sep = '.'
+            }
+            if (item2.split(item).length == 2) {
+                console.log(item2.split(item)[0])
+                temp.push(item2.split(item)[0] + sep + '-' + item2.split(item)[1])
+                name.push(item2)
+                pairend.push(item2)
+                extp.push(item2.split(item)[1])
+                paire = [...new Set(temp)]
+                // tempsep.push(sep)
+            }
+        })
+    })
+    /* paire.forEach(function (item2, index1, array) {
+        pairend.push(item2.split('-')[0])
+        extp.push(item2.split('-')[1])
+    }); */
+    name.forEach(function (item2, index1, array) {
+        const index = singlend.indexOf(item2);
+        if (index > -1) {
+            singlend.splice(index, 1);
+        }
+    });
+    //console.log(tempsep)
+    /*tsep = tempsep
+    tempsep.forEach(function (item2, index1, array) {
+        const index = tsep.indexOf(item2);
+        if (index > -1) {
+            tsep.splice(index, 1);
+        }
+    });*/
+    singlend.forEach(function (item, index1, array) {
+        temp = item.split('.');
+        switch (temp[temp.length - 1]) {
+            case 'fastq':
+                exts.push('fastq');
+                break
+            case 'fq':
+                exts.push('fq');
+                break;
+            case 'gz':
+                if (temp[temp.length - 2] == "fastq") {
+                    exts.push('fastq.gz');
+                } else {
+                    exts.push('fq.gz');
+                }
+                break;
+        }
+    });
+    console.log('pairend = ' + pairend)
+    console.log('singlend = ' + singlend)
+    console.log('pairend ext = ' + extp)
+    console.log('singlend ext = ' + exts)
+    return { 'pairend': pairend.sort(), 'singlend': singlend.sort() }//, 'extp': extp, 'exts': exts }
+
+}
+const getData = (req) => {
+    var id = req; //.params.data;
+    console.log('get', id)
+    var dirPath = '';
+    var extension = '';
+    var filesList;
+    switch (id) {
+        case 'data':
+            dirPath = path.resolve('data/'); // path to your directory goes here
+            break
+        case 'fastqc':
+            dirPath = path.resolve('./uploads/'); // path to your directory goes here
+            extension = '.xls'
+            break;
+        case 'parasite':
+            dirPath = path.resolve('ref/3D7/'); // path to your directory goes here
+            break;
+        case 'human':
+            dirPath = path.resolve('ref/human/');
+            break;
+        case 'cleaning':
+            dirPath = path.resolve('res/cleaning/');
+            break;
+        case 'filter':
+            dirPath = path.resolve('res/filter/');
+            break;
+        case 'alignement':
+            dirPath = path.resolve('res/bam/');
+            break;
+        default:
+            console.log('RIEN')
+    }
+    console.log(dirPath)
+    fs.readdir(dirPath, function (err, files) {
+        try {
+            filesList = files.filter(function (e) {
+                return path.extname(e).toLowerCase() === extension;
+                /*   
+                if (dirPath == path.resolve('res/fastqc/')) {
+                      return path.extname(e).toLowerCase() === '.html'
+                */
+            });
+            console.log(filesList + '============================')
+            //   res.json(filesList);
+        } catch (error) {
+            console.log(error.message)
+            //    res.json('Voir repertoire NGS TOOLS KIT');
+        }
+    });
+}
+const getTreads = (req, res) => {
+    const cpuCount = os.cpus().length;
+    res.json(cpuCount);
+}
+const getGenomHuman = (req, res) => {
+    var dirPath = path.resolve("ref/human/"); // path to your directory goes here
+    var filesList;
+    fs.readdir(dirPath, function (err, files) {
+        filesList = files.filter(function (e) {
+            return path.extname(e).toLowerCase() === '.fasta'
+            //|| path.extname(e).toLowerCase() === '.fa' || path.extname(e).toLowerCase() === '.fastq'
+        });
+        res.json(filesList);
+    });
+}
+const getGenomParasite = (req, res) => {
+    var dirPath = path.resolve("ref/3D7/"); // path to your directory goes here
+    var filesList;
+    fs.readdir(dirPath, function (err, files) {
+        filesList = files.filter(function (e) {
+            return path.extname(e).toLowerCase() === '.fasta'
+            //|| path.extname(e).toLowerCase() === '.fa' || path.extname(e).toLowerCase() === '.fastq'
+        });
+        res.json(filesList);
+    });
+}
+const runFastqc = (req, res) => {
+    /*  var ext = [];
+      console.log('---------------------------------------------', req.body);
+      var cp = 1;
+      var ex = 1;
+      let datas = req.body;
+      console.log(datas.length)
+      let samples = "samples : \n";
+      for (i = 0; i < datas.length; i++) {
+          samples += "    sample_" + cp + " : " + datas[i] + "\n";
+          ext.push((runGetMaqID(datas[i])))
+          cp++
+      }
+      samples += "extensions : \n";
+      for (i = 0; i < ext.length; i++) {
+          samples += "    ext_" + i + " : " + ext[i] + "\n";
+      }
+      samples += "ENVS:\n";
+      samples += "    SNK_ENV: source activate snakemake";
+      console.log(samples);
+      runYamlFile(samples);*/
+    var msg = runSnakefile("./controllers/fastqc_snk/", "./upload/res/fastq");
+    console.log('resqc retour ', msg)
+}
+const runQc = (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    let datas = req.body.data;
+    let myworks = runGetMaqID(datas)
+    let samples
+    samples += "ENVS:\n";
+    samples += "    SNK_ENV: source activate snakemake \n";
+    samples += "parameters : \n";
+    samples += "    trim_front1 : " + parameters.getForConda(req.body.parameter).trim_front1 + "\n";
+    samples += "    trim_front2 : " + parameters.getForConda(req.body.parameter).trim_front2 + "\n";
+    samples += "    trim_tail1 : " + parameters.getForConda(req.body.parameter).trim_tail1 + "\n";
+    samples += "    trim_tail2 : " + parameters.getForConda(req.body.parameter).trim_tail2 + "\n";
+    samples += "    n_base_limit : " + parameters.getForConda(req.body.parameter).n_base_limit + "\n";
+    samples += "    max_lg : " + parameters.getForConda(req.body.parameter).max_lg + "\n";
+    samples += "    max_ql : " + parameters.getForConda(req.body.parameter).max_ql + "\n";
+    if (myworks.pairend.length > 0) {
+        samples += "files_p : 1 \n";
+        samples += "samples_pairend : \n";
+        /*  for (i = 0; i < myworks.pairend.length; i++) {
+               samples += "    sample_" + i + " : " + myworks.pairend[i] + " \n";
+               runYamlFile(samples)
+               console.log(samples)
+           }*/
+        i = 0
+        do {
+
+            console.log(i, runYamlFile(samples))
+
+            i = i + 1
+
+
+        } while (i < myworks.pairend.length);
+
+
+
+        /*  samples += "extensions_pairend : \n";
+         for (i = 0; i < myworks.pairend.length; i++) {
+             samples += "    ext_" + i + " : " + myworks.extp[i] + " \n";
+         } */
+        //   }
+        // console.log('sample : ', samples)
+
+        //  todo =
+        //    runSnakefile("./controllers/qc_snk/", "./upload/res/qc")
+        //console.log('todoR', todoR)
+        //     console.log('return ---', todo)
+        //delete (samples)
+        // samples = "\n"
+        //      }
+
+
+        /*  console.log('---------------------------------------------------', todoR.tab, todoR.sep)
+          res.write(JSON.stringify(todoR.tab));
+          res.end();*/
+    } else {
+        samples += "files_p : 0 \n";
+        /* samples += "samples_pairend : \n";
+        samples += "    sample_: null \n";
+        samples += "extensions_pairend : \n";
+        samples += "    ext_: null \n"; */
+    }
+
+    if (myworks.singlend.length > 0) {
+        samples += "files_s : 1 \n";
+        samples += "samples_single : \n";
+        for (i = 0; i < myworks.singlend.length; i++) {
+            samples += "    sample_" + i + " : " + myworks.singlend[i] + " \n";
+        }
+        /*  samples += "extensions_single : \n";
+         for (i = 0; i < myworks.singlend.length; i++) {
+             samples += "    ext_" + i + " : " + myworks.exts[i] + " \n";
+         } */
+    } else {
+        samples += "files_s : 0 \n";
+        /* samples += "samples_single : \n";
+        samples += "    sample_: null \n";
+        samples += "extensions_single : \n";
+        samples += "    ext_: null \n"; */
+    }
+
+}
+
+
+
+
+
+
+
+/*const runQc = (req, res) => {
+    let datas = req.body.data;
+    console.log(runGetMaqID(datas))
+}*/
+
+const runDbsub = (req, res) => {
+    console.log(req.body);
+    var ext = [];
+    var cp = 1;
+    var ex = 1;
+    var end;
+    let datas = req.body.data;
+    console.log(datas.length)
+    if (datas.length > 1) {
+        end = 'paired'
+    } else {
+        end = 'single'
+    }
+    let samples = "samples : \n";
+    for (i = 0; i < datas.length; i++) {
+        samples += "    sample_" + cp + " : " + datas[i] + "\n";
+        ext.push((runGetMaqID(datas[i])))
+        cp++
+    }
+    samples += "extensions : \n";
+    for (i = 0; i < ext.length; i++) {
+        samples += "    ext_" + i + " : " + ext[i] + "\n";
+    }
+    samples += "parameter:\n";
+    samples += "    end : " + end + "\n";
+    samples += "references:\n";
+    samples += "    human: " + req.body.human + "\n";
+    samples += "    parasite: " + req.body.parasite + "\n";
+    samples += "ENVS:\n";
+    samples += "    SNK_ENV: source activate snakemake";
+    console.log(samples);
+    runYamlFile(samples);
+    runSnakefile("./controllers/double_sb_snk/", "./upload/res/dbsub", res);
+}
+const runPipe = (req, res) => {
+    console.log(req.body);
+    var ext = [];
+    var cp = 1;
+    var ex = 1;
+    var end;
+    let datas = req.body.data;
+    console.log(datas.length)
+    if (datas.length > 1) {
+        end = 'paired'
+    } else {
+        end = 'single'
+    }
+    let samples = "samples : \n";
+    for (i = 0; i < datas.length; i++) {
+        samples += "    sample_" + cp + " : " + datas[i] + "\n";
+        ext.push((runGetMaqID(datas[i])))
+        cp++
+    }
+    samples += "extensions : \n";
+    for (i = 0; i < ext.length; i++) {
+        samples += "    ext_" + i + " : " + ext[i] + "\n";
+    }
+    samples += "parameter:\n";
+    samples += "    end : " + end + "\n";
+    samples += "    trim_front1 : " + parameters.getForConda(req.body.parameter).trim_front1 + "\n";
+    samples += "    trim_front2 : " + parameters.getForConda(req.body.parameter).trim_front2 + "\n";
+    samples += "    trim_tail1 : " + parameters.getForConda(req.body.parameter).trim_tail1 + "\n";
+    samples += "    trim_tail2 : " + parameters.getForConda(req.body.parameter).trim_tail2 + "\n";
+    samples += "    n_base_limit : " + parameters.getForConda(req.body.parameter).n_base_limit + "\n";
+    samples += "    max_lg : " + parameters.getForConda(req.body.parameter).max_lg + "\n";
+    samples += "    max_ql : " + parameters.getForConda(req.body.parameter).max_ql + "\n";
+    samples += "references:\n";
+    samples += "    human: " + req.body.human + "\n";
+    samples += "    parasite: " + req.body.parasite + "\n";
+    samples += "ENVS:\n";
+    samples += "    SNK_ENV: source activate snakemake";
+    console.log(samples);
+    runYamlFile(samples);
+    runSnakefile("./controllers/pipeline_snk/", "./upload/res/pipe", res);
+}
+
+
+const runFiltering = (req, res) => {
+    console.log(req.body);
+    var cp = 1;
+    var end;
+    let datas = req.body.data.data;
+    let samples = req.body.data.datatype + ": \n";
+    if (checkGenome("ref/human/" + req.body.data.datahuman) != "OK" || (checkGenome("ref/3D7/" + req.body.data.dataparasite) != "OK")) {
+        res.setHeader('Content-Type', 'application/json');
+        res.write(JSON.stringify({
+            log: 'Indexed Data Genome Before  to Filter'
+        }));
+        res.end();
+    } else {
+
+        if (req.body.data.datatype = "samples_p") {
+            end = "paire"
+        } else {
+            end = "single"
+        }
+        for (i = 0; i < datas.length; i++) {
+
+            samples += "    sample_" + cp + " : " + datas[i] + "\n";
+            cp++
+        }
+        var ex = 1;
+        let extensions = runGetExtension(datas);
+        samples += "extensions : \n";
+        for (i = 0; i < extensions.length; i++) {
+
+            samples += "    extension_" + ex + " : " + extensions[i] + "\n";
+            ex++
+        }
+        samples += "parameter:\n";
+        samples += "    threads: " + req.body.data.threads + "\n";
+        samples += "    ftl: " + req.body.data.ftl + "\n";
+        samples += "    ftr: " + req.body.data.ftr + "\n";
+        samples += "    maq: " + req.body.data.maq + "\n";
+        samples += "    maxns: " + req.body.data.maxns + "\n";
+        samples += "    ml: " + req.body.data.ml + "\n";
+        samples += "    end: " + end + "\n";
+        samples += "genome:\n";
+        samples += "    human: " + req.body.data.datahuman + "\n";
+        samples += "    parasite: " + req.body.data.dataparasite + "\n";
+        samples += "ENVS:\n";
+        samples += "    SNK_ENV: source activate snakemake";
+
+        console.log(samples);
+        runYamlFile(samples);
+        runSnakefile("snakefile_filtering", req.body.data.threads, res);
+
+    }
+
+
+
+}
+const runSnp = (req, res) => {
+
+    console.log(req.body);
+    var cp = 1;
+    var end;
+    var maq = [];
+    let datas = req.body.data.data;
+    let samples = req.body.data.datatype + ": \n";
+    if (checkGenome("ref/3D7/" + req.body.data.dataparasite) != "OK") {
+        res.setHeader('Content-Type', 'application/json');
+        res.write(JSON.stringify({
+            log: 'Indexed Data Genome Before  to Filter'
+        }));
+        res.end();
+    } else {
+        if (req.body.data.datatype = "samples_p") {
+            end = "paire"
+        } else {
+            end = "single"
+        }
+        for (i = 0; i < datas.length; i++) {
+
+            samples += "    sample_" + cp + " : " + datas[i] + "\n";
+            maq.push(runGetMaqID(datas[i]))
+            cp++
+        }
+        var ex = 1;
+        let extensions = runGetExtension(datas);
+        samples += "extensions : \n";
+        for (i = 0; i < extensions.length; i++) {
+
+            samples += "    extension_" + ex + " : " + extensions[i] + "\n";
+            ex++
+        }
+        var mq = 1;
+        samples += "maq : \n";
+        for (i = 0; i < maq.length; i++) {
+
+            samples += "    maq_" + mq + " : " + maq[i] + "\n";
+            mq++
+        }
+        samples += "parameter:\n";
+        samples += "    threads: " + req.body.data.threads + "\n";
+        // samples += "    id: " + req.body.data.id + "\n";
+        samples += "    end: " + end + "\n";
+        samples += "genome:\n";
+        samples += "    parasite: " + req.body.data.dataparasite + "\n";
+        samples += "ENVS:\n";
+        samples += "    SNK_ENV: source activate snakemake";
+        console.log(samples);
+        runYamlFile(samples);
+        runSnakefile("snakefile_snp", req.body.data.threads, res);
+    }
+
+}
+const runIndex = (req, res) => {
+    // res.setHeader('Content-Type', 'text/plain');
+
+    console.log('----------------', req.body)
+    var data = req.body.data;
+    var type = req.body.type;
+    var snake = ''
+    var repertory = ''
+    var cp = 1;
+    if (type == 'hote') {
+        repertory = './upload/references/human';
+        snake = './controllers/indexh_snk/';
+    } else {
+        repertory = './upload/references/parasite';
+        snake = './controllers/indexp_snk/';
+    }
+    let samples = '';
+    samples += "parameter:\n";
+    for (i = 0; i < data.length; i++) {
+        samples += "    ref_" + cp + " : " + data[i] + "\n";
+        if (checkGenome(data[i]) == 0) {
+            runYamlFile(samples);
+            runSnakefile(snake, repertory, res)
+        } else {
+            //res.json('the selected genome is already indexed');
+        }
+        cp++
+    }
+
+}
+
+
+
+
+
+const downloadFile = (req, res) => {
+    var id = req.params.data;
+
+    console.log('Download : ' + id.split("-").join("/"));
+    res.download(id.split("-").join("/"));
+}
+const deleteFile = (req, res) => {
+    var id = req.params.data;
+
+    var id = req.params.data;
+
+
+    repertory = 'res/' + id.split("-").join("/");
+
+    fs.readdir(repertory, (err, files) => {
+        if (err) throw err;
+
+        for (const file of files) {
+
+            fs.unlink(path.join(repertory, file), err => {
+                if (err) {
+                    throw err;
+                } else {
+                    //  res.redirect(req.get('referer'));
+                }
+            });
+
+        }
+        res.redirect(req.get('referer'));
+    });
+
+}
+module.exports = {
+    getData,
+    getTreads,
+    getGenomHuman,
+    getGenomParasite,
+    runFastqc,
+    runQc,
+    runDbsub,
+    runIndex,
+    downloadFile,
+    deleteFile,
+    runSnp,
+    runPipe
+}

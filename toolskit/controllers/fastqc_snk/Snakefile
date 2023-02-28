@@ -1,0 +1,39 @@
+        #####on importe les modules pythons dont on aura besoin
+configfile: "config.yaml"
+#import copy
+        #######on donne le dossier d'origine des données fastq brute à analyser et on initialise son path avec "Path"
+
+# -----pour faciliter le positionnement des autres dossiers nécessaires reativement à celui-ci si nécessaire
+#dossier_ori_data_raw = input ("entrer le dossier source : " )
+#dossier_ori_data_raw = "/Users/acquahpatriciahotmail.com/ws/data"
+dossier_ori_data_raw = config["ENVS"]["home"]+"/uploads/data"
+path_dossier_ori_data_raw = Path(dossier_ori_data_raw)
+#dossier_parametre_file = "/Users/acquahpatriciahotmail.com/Documents/covid/data_exo_stan/snake_cov_exo_stan1/parametres/parametre.csv"
+#path_qc_parametre_file = path_dossier_ori_data_raw.parent / "parametres/parametre.csv"
+path_dossier_ori_parent = path_dossier_ori_data_raw.parent
+
+
+        ####### les transformations suivantes sont faites pour obtenir dans une liste ordonnée
+
+# les noms brutes de tous les runs dans le dossier source des données brutes
+# utilise une loop for pour obtenir donne ss forme de liste la totalité des .fastq dans le dossier_ori_data_raw
+# glob permet de récupérer les paths des fichiers dans le dossier_ori respectant la reg "*.fastq.gz"
+
+###########faire attention si les fichiers sont d'un autre type
+samples = []
+sample = []
+sample = expand(config["samples"])
+for f in sample:
+    f = config["samples"][f]
+    samples.append(f)
+print(samples)
+
+pes = [1,2]
+print(dossier_ori_data_raw)
+rule fastqc :
+    input :
+        expand("{echantillon}",echantillon=samples)
+    params :
+        path_dossier_ori_parent / "res/fastq/"
+    shell :
+        "fastqc {input} -o {params} && rm -fr uploads/res/fastq/*zip*"

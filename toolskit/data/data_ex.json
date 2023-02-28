@@ -1,0 +1,30 @@
+[
+    {
+        "fullname": "GCF_000001405.39_GRCh38.p13_genomic.fna.gz",
+        "url": "uploads/references/human/GCF_000001405.39_GRCh38.p13_genomic.fna.gz",
+        "type": "ref_hote"
+    },
+    {
+        "fullname": "Wuhan-Hu-1.fasta",
+        "url": "uploads/references/parasite/Wuhan-Hu-1.fasta",
+        "type": "ref_patho"
+    },
+    {
+        "fullname": "PlasmoDB-55_Pfalciparum3D7_Genome(1).fasta",
+        "url": "uploads/references/parasite/PlasmoDB-55_Pfalciparum3D7_Genome(1).fasta",
+        "type": "ref_patho",
+        "id": 1643401486479
+    },
+    {
+        "fullname": "SRR11953673_1.fastq.gz",
+        "url": "uploads/data/SRR11953673_1.fastq.gz",
+        "type": "sequences",
+        "id": 1656770848845
+    },
+    {
+        "fullname": "SRR11953673_2.fastq.gz",
+        "url": "uploads/data/SRR11953673_2.fastq.gz",
+        "type": "sequences",
+        "id": 1656770848999
+    }
+]

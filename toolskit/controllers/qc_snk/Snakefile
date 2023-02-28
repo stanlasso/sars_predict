@@ -1,0 +1,94 @@
+        #####on importe les modules pythons dont on aura besoin
+configfile: "config.yaml"
+#import copy
+        #######on donne le dossier d'origine des données fastq brute à analyser et on initialise son path avec "Path"
+
+# -----pour faciliter le positionnement des autres dossiers nécessaires reativement à celui-ci si nécessaire
+#dossier_ori_data_raw = input ("entrer le dossier source : " )
+#dossier_ori_data_raw = "/Users/acquahpatriciahotmail.com/ws/data"
+dossier_ori_data_raw = config["ENVS"]["home"]+"/uploads/data"
+path_dossier_ori_data_raw = Path(dossier_ori_data_raw)
+#dossier_parametre_file = "/Users/acquahpatriciahotmail.com/Documents/covid/data_exo_stan/snake_cov_exo_stan1/parametres/parametre.csv"
+#path_qc_parametre_file = path_dossier_ori_data_raw.parent / "parametres/parametre.csv"
+path_dossier_ori_parent = path_dossier_ori_data_raw.parent
+
+
+        ####### les transformations suivantes sont faites pour obtenir dans une liste ordonnée
+
+# les noms brutes de tous les runs dans le dossier source des données brutes
+# utilise une loop for pour obtenir donne ss forme de liste la totalité des .fastq dans le dossier_ori_data_raw
+# glob permet de récupérer les paths des fichiers dans le dossier_ori respectant la reg "*.fastq.gz"
+
+###########faire attention si les fichiers sont d'un autre type
+samples = []
+sample = []
+sample = expand(config["samples"])
+for f in sample:
+    f = config["samples"][f]
+    samples.append(f)
+
+extensions = []
+extension = []
+extension = expand(config["extensions"])
+for e in extension:
+    e = config["extensions"][e]
+    extensions.append(e)
+
+print(samples)
+print(extensions)
+
+
+#path_dossier_ori_glob = path_dossier_ori_data_raw.glob('*.fastq.gz')
+#faire une liste des noms des fichiers avec Path.name, les réduire aux noms brutes, en faire un set pour éliminer les doublons du au Pair end
+#remettre sous forme de liste pour pouvoir les ordonner avec sorted 
+#samples = sorted(list(set([i.name.split("_")[0] for i in path_dossier_ori_glob]))) 
+#permet de donner une extension pour l'analyse des seq froward and reverse
+pes = [1,2]
+
+ 
+print(dossier_ori_data_raw)
+rule all:
+    input :
+        expand(path_dossier_ori_parent / "res/qc/{echantillon}1.fq.gz",pe=pes,echantillon=samples),
+        expand(path_dossier_ori_parent / "res/qc/{echantillon}2.fq.gz",pe=pes,echantillon=samples)
+rule fastp_trim :
+    input :
+        R1= path_dossier_ori_parent / "data/{echantillon}1.fastq.gz",
+        R2= path_dossier_ori_parent / "data/{echantillon}2.fastq.gz"
+    output :
+        R1=path_dossier_ori_parent / "res/qc/{echantillon}1_val_1.fq.gz",
+        R2=path_dossier_ori_parent / "res/qc/{echantillon}2_val_2.fq.gz"
+    params:
+        trim_front1 = config["parameter"]["trim_front1"],
+        trim_front2 = config["parameter"]["trim_front2"],
+        trim_tail1 = config["parameter"]["trim_tail1"],
+        trim_tail2 = config["parameter"]["trim_tail2"],
+        n_base_limit = config["parameter"]["n_base_limit"],
+        max_lg = config["parameter"]["max_lg"],
+        max_ql = config["parameter"]["max_ql"]
+    shell :
+        "trim_galore -q {params.max_ql} --length {params.max_lg} --clip_R1 {params.trim_front1} --clip_R2 {params.trim_front2} --three_prime_clip_R1 {params.trim_tail1} --three_prime_clip_R2 {params.trim_tail2} --max_n {params.n_base_limit} --paired {input.R1} {input.R2} -o uploads/res/qc"
+rule move :
+    input :
+        R1=path_dossier_ori_parent / "res/qc/{echantillon}1_val_1.fq.gz",
+        R2=path_dossier_ori_parent / "res/qc/{echantillon}2_val_2.fq.gz"
+    output :
+        R1=path_dossier_ori_parent / "res/qc/{echantillon}1.fq.gz",
+        R2=path_dossier_ori_parent / "res/qc/{echantillon}2.fq.gz"
+    shell :
+        "mv {input.R1} {output.R1} && mv {input.R2} {output.R2} && rm -fr uploads/res/qc/*txt*"
+        #"fastp -i {input.R1} -o {output.R1} -I {input.R2} -O {output.R2} --detect_adapter_for_pe --trim_front1 {params.trim_front1} --trim_front2 {params.trim_front2} --trim_tail1 {params.trim_tail1} --trim_tail2 {params.trim_tail2} --n_base_limit {params.n_base_limit} --json {output.json} --html {output.html}"
+#rule sickle_qual_lenght :
+#    input :
+#        R1=path_dossier_ori_parent / "res/qc/trimed_{echantillon}1.fastq",
+#        R2=path_dossier_ori_parent / "res/qc/trimed_{echantillon}2.fastq"
+#    output :
+#       R1=path_dossier_ori_parent / "res/qc/trimed2_{echantillon}1.fastq",
+#        R2=path_dossier_ori_parent / "res/qc/trimed2_{echantillon}2.fastq",
+#        single_out=path_dossier_ori_parent / "res/qc/{echantillon}sickle_single_output.fastq"
+# no conda dependencies since sickle installed on the system 
+#    params:
+#       max_lg = config["parameter"]["max_lg"],
+#        max_ql = config["parameter"]["max_ql"]
+#   shell :
+#       "sickle pe -t sanger -f {input.R1} -r {input.R2} -o {output.R1} -p {output.R2} -s {output.single_out} -l {params.max_lg} -q {params.max_ql}"

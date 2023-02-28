@@ -1,0 +1,36 @@
+import matplotlib.pyplot as plt
+import pandas
+import subprocess
+import os
+configfile: "config.yaml"
+os.system('rm -fr ./uploads/res/img')
+os.system('mkdir -p ./uploads/res/img')
+
+plt.figure(figsize = (8, 8)) 
+
+mh = 0
+pm = 0
+pu = 0
+
+nm = config["paramettre"]["name"]
+mh = (config["paramettre"]["hm"]*100)/config["paramettre"]["read"]
+pm = (config["paramettre"]["pm"]*100)/config["paramettre"]["read"]
+pu = (config["paramettre"]["pu"]*100)/config["paramettre"]["read"]
+print(mh)
+print(pm)
+print(pu)
+x = [mh, pm, pu]
+plt.pie(x, labels = ['Host mapped', 'Patho mapped', 'Patho unmapped'],
+autopct=lambda x : str(round(x,2)) +'%')
+plt.savefig('./uploads/res/img/'+nm+'.png')
+    
+
+
+
+
+   # agrandir l'affichage
+
+
+
+
+    

@@ -1,0 +1,82 @@
+configfile: "config.yaml"
+hu= config["references"]["human"]
+pa= config["references"]["parasite"]
+dossier_ori_data_raw = config["ENVS"]["home"]+"/uploads/data"
+path_dossier_ori_data_raw = Path(dossier_ori_data_raw)
+path_dossier_ori_parent = path_dossier_ori_data_raw.parent
+samples = []
+sample = []
+sample = expand(config["samples"])
+for f in sample:
+    f = config["samples"][f]
+    samples.append(f)
+print(samples)
+pes = [1,2]
+
+ 
+print(dossier_ori_data_raw)
+rule all:
+    input :
+        expand(path_dossier_ori_parent / "res/dbsub/PathoUnmapped{sample}1.fastq",sample=samples),
+        expand(path_dossier_ori_parent / "res/dbsub/PathoUnmapped{sample}2.fastq",sample=samples),
+        expand(path_dossier_ori_parent / "res/dbsub/PathoMapped{sample}1.fastq",sample=samples),
+        expand(path_dossier_ori_parent / "res/dbsub/PathoMapped{sample}2.fastq",sample=samples)
+rule host_align : 
+    input : 
+        R1=path_dossier_ori_parent / "res/qc/{sample}1.fq.gz",
+        R2=path_dossier_ori_parent / "res/qc/{sample}2.fq.gz",
+        ref=path_dossier_ori_parent / "references/human" / str(hu)
+    output : 
+        path_dossier_ori_parent / "res/dbsub/Host_align{sample}.sam"
+    shell : 
+        "bwa mem {input.ref} {input.R1} {input.R2} > {output}"
+rule HostUnmapped_and_HostMapped : 
+    input :
+        path_dossier_ori_parent / "res/dbsub/Host_align{sample}.sam"
+    output :
+        R1=path_dossier_ori_parent / "res/dbsub/HostUnmapped{sample}.bam",
+        R2=path_dossier_ori_parent / "res/dbsub/HostMapped{sample}.bam"
+    shell :
+        "samtools view -Sb -f0x4 {input} > {output.R1} && samtools view -Sb -F0x4 {input} > {output.R2}"
+rule HostUnmapped_fq_and_HostMapped_fq :
+    input :
+        R1=path_dossier_ori_parent / "res/dbsub/HostUnmapped{sample}.bam",
+        R2=path_dossier_ori_parent / "res/dbsub/HostMapped{sample}.bam"
+    output :
+        R1=path_dossier_ori_parent / "res/dbsub/HostUnmapped{sample}1.fastq",
+        R2=path_dossier_ori_parent / "res/dbsub/HostUnmapped{sample}2.fastq",
+        R3=path_dossier_ori_parent / "res/dbsub/HostMapped{sample}1.fastq",
+        R4=path_dossier_ori_parent / "res/dbsub/HostMapped{sample}2.fastq"
+    shell :
+        "samtools bam2fq -1 {output.R1} -2 {output.R2} -0 /dev/null -s /dev/null -n -F 0x900 {input.R1} && samtools bam2fq -1 {output.R3} -2 {output.R4} -0 /dev/null -s /dev/null -n -F 0x900 {input.R2}"
+rule patho_align :
+    input :
+        R1=path_dossier_ori_parent / "res/dbsub/HostUnmapped{sample}1.fastq",
+        R2=path_dossier_ori_parent / "res/dbsub/HostUnmapped{sample}2.fastq",
+        ref=path_dossier_ori_parent / "references/parasite/" / str(pa)
+    output :
+        path_dossier_ori_parent / "res/dbsub/Patho_align{sample}.sam"
+    shell :
+        "bwa mem {input.ref} {input.R1} {input.R2} > {output}"
+rule PathoMapped_and_PathoUnmapped :
+    input :
+        path_dossier_ori_parent / "res/dbsub/Patho_align{sample}.sam"
+    output :
+        R1=path_dossier_ori_parent / "res/dbsub/PathoMapped{sample}.bam",
+        R2=path_dossier_ori_parent / "res/dbsub/PathoUnmapped{sample}.bam"
+    params:
+        quality = config["references"]["quality"]
+    shell :
+        "samtools view -q {params.quality} -Sb -F0x4 {input} > {output.R1} && samtools view -Sb -f0x4 {input} > {output.R2}"
+rule PathoUnmapped_fq_and_PathoMapped_fq :
+    input :
+        R1=path_dossier_ori_parent / "res/dbsub/PathoMapped{sample}.bam",
+        R2=path_dossier_ori_parent / "res/dbsub/PathoUnmapped{sample}.bam"
+    output :
+        R1=path_dossier_ori_parent / "res/dbsub/PathoUnmapped{sample}1.fastq",
+        R2=path_dossier_ori_parent / "res/dbsub/PathoUnmapped{sample}2.fastq",
+        R3=path_dossier_ori_parent / "res/dbsub/PathoMapped{sample}1.fastq",
+        R4=path_dossier_ori_parent / "res/dbsub/PathoMapped{sample}2.fastq"
+    shell :
+        "samtools bam2fq -1 {output.R3} -2 {output.R4} -0 /dev/null -s /dev/null -n -F 0x900 {input.R1} && samtools bam2fq -1 {output.R1} -2 {output.R2} -0 /dev/null -s /dev/null -n -F 0x900 {input.R2}"# && rm -fr uploads/res/dbsub/*.*am* uploads/res/dbsub/*Host_* uploads/res/dbsub/*unmapped*"
+##Compress in fastq.gz

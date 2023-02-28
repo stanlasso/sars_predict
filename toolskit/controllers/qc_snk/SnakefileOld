@@ -1,0 +1,30 @@
+import tempfile
+import os
+import glob
+configfile: "config.yaml"
+SAMPLE_P = []
+SAMPLE_S = []
+EXT_P = []
+EXT_s = []
+I = 0
+SAMPLES_P = expand(config["samples_pairend"])
+EXTS_P = expand(config["extensions_pairend"])
+SAMPLES_S = expand(config["samples_single"])
+EXTS_S = expand(config["extensions_single"])
+for f in EXTS_P:
+    f = config["extensions_pairend"][f]
+    EXT_P.append(f)
+for f in EXTS_S:
+    f = config["extensions_single"][f]
+    EXT_S.append(f)
+for f in SAMPLES_P:
+    f = config["samples_pairend"][f]
+    SAMPLE_P.append(f)
+for f in SAMPLES_S:
+    f = config["samples_single"][f]
+    SAMPLE_S.append(f)
+print(EXT_S)
+print(EXT_P)
+print(EXT)
+print(SAMPLE_P)
+print(SAMPLE_S)

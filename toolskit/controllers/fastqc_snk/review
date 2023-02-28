@@ -1,0 +1,74 @@
+        #####on importe les modules pythons dont on aura besoin
+configfile: "config.yaml"
+#import copy
+        #######on donne le dossier d'origine des données fastq brute à analyser et on initialise son path avec "Path"
+
+# -----pour faciliter le positionnement des autres dossiers nécessaires reativement à celui-ci si nécessaire
+#dossier_ori_data_raw = input ("entrer le dossier source : " )
+#dossier_ori_data_raw = "/Users/acquahpatriciahotmail.com/ws/data"
+dossier_ori_data_raw = config["ENVS"]["home"]+"/uploads/data"
+path_dossier_ori_data_raw = Path(dossier_ori_data_raw)
+#dossier_parametre_file = "/Users/acquahpatriciahotmail.com/Documents/covid/data_exo_stan/snake_cov_exo_stan1/parametres/parametre.csv"
+#path_qc_parametre_file = path_dossier_ori_data_raw.parent / "parametres/parametre.csv"
+path_dossier_ori_parent = path_dossier_ori_data_raw.parent
+
+
+        ####### les transformations suivantes sont faites pour obtenir dans une liste ordonnée
+
+# les noms brutes de tous les runs dans le dossier source des données brutes
+# utilise une loop for pour obtenir donne ss forme de liste la totalité des .fastq dans le dossier_ori_data_raw
+# glob permet de récupérer les paths des fichiers dans le dossier_ori respectant la reg "*.fastq.gz"
+
+###########faire attention si les fichiers sont d'un autre type
+samples = []
+sample = []
+sample = expand(config["samples"])
+for f in sample:
+    f = config["samples"][f]
+    samples.append(f)
+
+
+extensions = []
+extension = []
+extension = expand(config["extensions"])
+for e in extension:
+    e = config["extensions"][e]
+    extensions.append(e)
+
+print(samples)
+print(extensions)
+
+pes = [1,2]
+print(dossier_ori_data_raw)
+rule all:
+    input :
+        expand(path_dossier_ori_parent / "res/fastq/trimmed_{echantillon}1_fastqc.zip",echantillon=samples),
+        expand(path_dossier_ori_parent / "res/fastq/trimmed_{echantillon}2_fastqc.zip",echantillon=samples),
+        expand(path_dossier_ori_parent / "res/fastq/trimmed_{echantillon}1_fastqc.html",echantillon=samples),
+        expand(path_dossier_ori_parent / "res/fastq/trimmed_{echantillon}2_fastqc.html",echantillon=samples)
+rule fastp :
+    input :
+        in1 = expand(path_dossier_ori_parent / "data/{echantillon}1.{ex}",pe=pes,echantillon=samples,ex=extensions),
+        in2 = expand(path_dossier_ori_parent / "data/{echantillon}2.{ex}",pe=pes,echantillon=samples,ex=extensions),
+    output :
+        out1 = expand(path_dossier_ori_parent / "res/fastq/{echantillon}fastp.json",pe=pes,echantillon=samples),
+        out2 = expand(path_dossier_ori_parent / "res/fastq/{echantillon}fastp.html",pe=pes,echantillon=samples),
+        out3 = expand(path_dossier_ori_parent / "res/fastq/trimmed_{echantillon}1.fastq.gz",pe=pes,echantillon=samples),
+        out4 = expand(path_dossier_ori_parent / "res/fastq/trimmed_{echantillon}2.fastq.gz",pe=pes,echantillon=samples)
+    params :
+        path_dossier_ori_parent / "res/fastq/"
+    shell :
+        "fastp --detect_adapter_for_pe --overrepresentation_analysis --correction --cut_right --html {output.out1} --json {output.out2} -i {input.in1} -I {input.in2} -o {output.out3} -O {output.out4}"
+rule fastqc :
+    input :
+        in1 = expand(path_dossier_ori_parent / "res/fastq/trimmed_{echantillon}1.fastq.gz",pe=pes,echantillon=samples),
+        in2 = expand(path_dossier_ori_parent / "res/fastq/trimmed_{echantillon}2.fastq.gz",pe=pes,echantillon=samples)
+    output :
+        expand(path_dossier_ori_parent / "res/fastq/trimmed_{echantillon}1_fastqc.zip",echantillon=samples),
+        expand(path_dossier_ori_parent / "res/fastq/trimmed_{echantillon}2_fastqc.zip",echantillon=samples),
+        expand(path_dossier_ori_parent / "res/fastq/trimmed_{echantillon}1_fastqc.html",echantillon=samples),
+        expand(path_dossier_ori_parent / "res/fastq/trimmed_{echantillon}2_fastqc.html",echantillon=samples)
+    params :
+        path_dossier_ori_parent / "res/fastq/"
+    shell :
+        "fastqc {input} -o {params}"

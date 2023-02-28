@@ -1,0 +1,3 @@
+rule ski:
+    shell :
+        "seqkit stats uploads/res/qc/*trimed2*.fastq uploads/res/dbsub/*Host_mapped*.fastq uploads/res/dbsub/*Patho_mapped*.fastq uploads/res/dbsub/*Patho_unmapped*.fastq -T | csvtk csv2md -t > console.csv && sed -i 's/|/,/g' console.csv"

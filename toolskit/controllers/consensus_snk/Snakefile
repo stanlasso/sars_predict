@@ -1,0 +1,91 @@
+configfile: "config.yaml"
+qualty = config["parametres"]["quality"]
+dossier_ori_data_raw = config["ENVS"]["home"]+"/uploads/res"
+path_dossier_ori_data_raw = Path(dossier_ori_data_raw)
+path_dossier_ori_parent = path_dossier_ori_data_raw.parent
+
+
+
+samples = []
+sample = []
+
+patho = [] 
+pathos = []
+
+sample = expand(config["samples"])
+for f in sample:
+    f = config["samples"][f]
+    samples.append(f)
+
+patho = expand(config["references_eclate"])
+for fe in patho:
+    fe = config["references_eclate"][fe]
+    pathos.append(fe)
+
+
+
+print(samples)
+print(pathos)
+pes = [1,2]
+print(dossier_ori_data_raw)
+
+rule all:
+    input :
+        expand(path_dossier_ori_parent / "res/cons/{t_samples}/cons/consensus_{t_pathos}_{t_samples}.fasta",t_samples=samples,t_pathos=pathos)
+rule assemblage : 
+    input : 
+        R1=path_dossier_ori_parent / "res/dbsub/{t_samples}1.fastq",
+        R2=path_dossier_ori_parent / "res/dbsub/{t_samples}2.fastq"
+    output : 
+        out_dir = directory(path_dossier_ori_parent / "res/cons/{t_samples}/contig"),
+        fasta = path_dossier_ori_parent / "res/cons/{t_samples}/contig/final.contigs.fa"
+    shell : 
+        "megahit -1 {input.R1} -2 {input.R2} -f -o {output.out_dir}"
+rule cons_sam : 
+    input :
+       fasta = path_dossier_ori_parent / "res/cons/{t_samples}/contig/final.contigs.fa",
+       ref=path_dossier_ori_parent / "res/cons/references/{t_pathos}"
+    output : 
+        path_dossier_ori_parent / "res/cons/{t_samples}/sam/{t_pathos}.sam"
+    shell : 
+        "minimap2 --secondary=no -a {input.ref} {input.fasta} -o {output}"
+rule cons_bam : 
+    input :
+        path_dossier_ori_parent / "res/cons/{t_samples}/sam/{t_pathos}.sam"
+    output : 
+        path_dossier_ori_parent / "res/cons/{t_samples}/bam/{t_pathos}.bam"
+    shell : 
+        "samtools view -S -h -b {input} | samtools sort > {output} && samtools index {output}"
+rule cons_vcf : 
+    input :
+        bam=path_dossier_ori_parent / "res/cons/{t_samples}/bam/{t_pathos}.bam",
+        ref=path_dossier_ori_parent / "res/cons/references/{t_pathos}"
+    output : 
+        path_dossier_ori_parent / "res/cons/{t_samples}/vcf/{t_pathos}.vcf"
+    params : 
+        dep= config["parametres"]["depth"],
+        qy= config["parametres"]["quality"]
+    shell : 
+        "bcftools mpileup -f {input.ref} {input.bam} | bcftools call --ploidy 1 -cv -o {output}"
+rule cons_vcf_bgzip  : 
+    input :
+        path_dossier_ori_parent / "res/cons/{t_samples}/vcf/{t_pathos}.vcf"
+    output : 
+        path_dossier_ori_parent / "res/cons/{t_samples}/vcf/{t_pathos}.vcf.gz"
+    shell : 
+        "bgzip {input} && bcftools filter -e 'QUAL<{params.qy} || INFO/DP<{params.dep}' {output} >> {output} && tabix {output}"
+rule cons : 
+    input :
+        R=path_dossier_ori_parent / "res/cons/{t_samples}/vcf/{t_pathos}.vcf.gz",
+        ref=path_dossier_ori_parent / "res/cons/references/{t_pathos}"
+    output : 
+        path_dossier_ori_parent / "res/cons/{t_samples}/cons/consensus_{t_pathos}_{t_samples}.fasta"
+    shell : 
+        "cat {input.ref} | bcftools consensus {input.R} > {output}"
+
+
+
+
+
+        
+

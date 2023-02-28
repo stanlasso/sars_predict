@@ -1,0 +1,140 @@
+import tempfile
+import os
+import glob
+
+configfile: "config.yaml"
+SAMPLE = []
+SAMPLE_EXT = []
+EXT = []
+I = 0
+EXTS = expand(config["extensions"])
+SAMPLES = expand(config["samples"])
+for f in EXTS:
+    f = config["extensions"][f]
+    EXT.append(f)
+for f in SAMPLES:
+    f = config["samples"][f].replace("."+EXT[I], '')
+    SAMPLE.append(f)
+    I = I + 1
+for e in SAMPLES:
+    e = config["samples"][e]
+    SAMPLE_EXT.append(e)
+print(EXT)
+print(SAMPLE)
+print(SAMPLE_EXT)
+
+if "single" in config["parameter"]["end"]:
+    rule all:
+        input:
+            out1 = expand("uploads/res/dbsub/{sample}_Human_umapped.fastq", sample=SAMPLE[0][0:-2]),
+            out2 = expand("uploads/res/dbsub/{sample}_Human_mapped.fastq", sample=SAMPLE[0][0:-2]),
+            out3 = expand("uploads/res/dbsub/{sample}_Parasite_umapped.fastq", sample=SAMPLE[0][0:-2]),
+            out4 = expand("uploads/res/dbsub/{sample}_Parasite_mapped.fastq", sample=SAMPLE[0][0:-2])
+    rule align_human:
+        input:
+            in1 = "uploads/references/human/"+str(config["references"]["human"]),
+            in2 = expand("uploads/res/qc/{sample}_trimmed2.fastq", sample=SAMPLE[0])           
+        output:
+            out2 = expand("uploads/res/dbsub/{sample}_Human_align.sam", sample=SAMPLE[0][0:-2])
+        shell:
+            "bwa mem {input.in1} {input.in2} > {output.out2}"
+    rule align_parasite:
+        input:
+            in1 = "uploads/references/parasite/"+str(config["references"]["parasite"]),
+            in2 = expand("uploads/res/qc/{sample}_trimmed2.fastq", sample=SAMPLE[0])
+        output:
+            expand("uploads/res/dbsub/{sample}_Parasite_align.sam",sample=SAMPLE[0][0:-2])
+        shell:
+            "bwa mem {input.in1} {input.in2} > {output}"
+    rule mapped_umapped_human:
+        input:
+            expand("uploads/res/dbsub/{sample}_Human_align.sam", sample=SAMPLE[0][0:-2]),
+        output:
+            out1 = expand("uploads/res/dbsub/{sample}_Human_umapped.bam", sample=SAMPLE[0][0:-2]),
+            out2 = expand("uploads/res/dbsub/{sample}_Human_mapped.bam", sample=SAMPLE[0][0:-2])
+        shell:
+            "samtools view -Sb -f0x4 {input} > {output.out1} && samtools view -Sb -F0x4 {input} > {output.out2}"
+    rule mapped_umapped_parasite:
+        input:
+            expand("uploads/res/dbsub/{sample}_Parasite_align.sam",sample=SAMPLE[0][0:-2]),
+        output:
+            out1 = expand("uploads/res/dbsub/{sample}_Parasite_umapped.bam", sample=SAMPLE[0][0:-2]),
+            out2 = expand("uploads/res/dbsub/{sample}_Parasite_mapped.bam", sample=SAMPLE[0][0:-2])
+        shell:
+            "samtools view -Sb -f0x4 {input} > {output.out1} && samtools view -Sb -F0x4 {input} > {output.out2}"
+    rule fastq_extract:
+        input:
+            in1 = expand("uploads/res/dbsub/{sample}_Human_umapped.bam", sample=SAMPLE[0][0:-2]),
+            in2 = expand("uploads/res/dbsub/{sample}_Human_mapped.bam", sample=SAMPLE[0][0:-2]),
+            in3 = expand("uploads/res/dbsub/{sample}_Parasite_umapped.bam", sample=SAMPLE[0][0:-2]),
+            in4 = expand("uploads/res/dbsub/{sample}_Parasite_mapped.bam", sample=SAMPLE[0][0:-2])
+        output:
+            out1 = expand("uploads/res/dbsub/{sample}_Human_umapped.fastq", sample=SAMPLE[0][0:-2]),
+            out2 = expand("uploads/res/dbsub/{sample}_Human_mapped.fastq", sample=SAMPLE[0][0:-2]),
+            out3 = expand("uploads/res/dbsub/{sample}_Parasite_umapped.fastq", sample=SAMPLE[0][0:-2]),
+            out4 = expand("uploads/res/dbsub/{sample}_Parasite_mapped.fastq", sample=SAMPLE[0][0:-2])
+        shell:
+            "samtools bam2fq {input.in1} > {output.out1} && samtools bam2fq {input.in2} > {output.out2} && samtools bam2fq {input.in3} > {output.out3} && samtools bam2fq {input.in4} > {output.out4}"          
+else:
+    rule all:
+        input:
+            out1 = expand("uploads/res/dbsub/{sample}_Parasite_umapped_R1.fastq", sample=SAMPLE[1][0:-2]),
+            out2 = expand("uploads/res/dbsub/{sample}_Parasite_umapped_R2.fastq", sample=SAMPLE[1][0:-2]),
+            out3 = expand("uploads/res/dbsub/{sample}_Parasite_mapped_R1.fastq", sample=SAMPLE[1][0:-2]),
+            out4 = expand("uploads/res/dbsub/{sample}_Parasite_mapped_R2.fastq", sample=SAMPLE[1][0:-2]),
+            out5 = expand("uploads/res/dbsub/{sample}_Human_umapped_R1.fastq", sample=SAMPLE[1][0:-2]),
+            out6 = expand("uploads/res/dbsub/{sample}_Human_umapped_R2.fastq", sample=SAMPLE[1][0:-2]),
+            out7 = expand("uploads/res/dbsub/{sample}_Human_mapped_R1.fastq", sample=SAMPLE[1][0:-2]),
+            out8 = expand("uploads/res/dbsub/{sample}_Human_mapped_R2.fastq", sample=SAMPLE[1][0:-2])
+    rule align_human:
+        input:
+            in1 = "uploads/references/human/"+str(config["references"]["human"]),
+            in2 = expand("uploads/res/qc/{sample}.fastq", sample=SAMPLE[0]),
+            in3 = expand("uploads/res/qc/{sample}.fastq", sample=SAMPLE[1])
+        output:
+            expand("uploads/res/dbsub/{sample}_Human_align.sam", sample=SAMPLE[1][0:-2])
+        shell:
+            "bwa mem {input.in1} {input.in2} {input.in3} > {output}"
+    rule mapped_umapped_human:
+        input:
+            expand("uploads/res/dbsub/{sample}_Human_align.sam", sample=SAMPLE[1][0:-2]),
+        output:
+            out1 = expand("uploads/res/dbsub/{sample}_Human_umapped.bam", sample=SAMPLE[1][0:-2]),
+            out2 = expand("uploads/res/dbsub/{sample}_Human_mapped.bam", sample=SAMPLE[1][0:-2])
+        shell:
+            "samtools view -Sb -f0x4 {input} > {output.out1} && samtools view -Sb -F0x4 {input} > {output.out2}"
+    rule align_parasite:
+        input:
+            in1 = "uploads/references/parasite/"+str(config["references"]["parasite"]),
+            in2 = expand("uploads/res/qc/{sample}.fastq", sample=SAMPLE[0]),
+            in3 = expand("uploads/res/qc/{sample}.fastq", sample=SAMPLE[1])
+        output:
+            expand("uploads/res/dbsub/{sample}_Parasite_align.sam",sample=SAMPLE[1][0:-2])
+        shell:
+            "bwa mem {input.in1} {input.in2} {input.in3} > {output} && rm -fr {input.in2} {input.in3}"
+    rule mapped_umapped_parasite:
+        input:
+            expand("uploads/res/dbsub/{sample}_Parasite_align.sam",sample=SAMPLE[1][0:-2]),
+        output:
+            out1 = expand("uploads/res/dbsub/{sample}_Parasite_umapped.bam", sample=SAMPLE[1][0:-2]),
+            out2 = expand("uploads/res/dbsub/{sample}_Parasite_mapped.bam", sample=SAMPLE[1][0:-2])
+        shell:
+            "samtools view -Sb -f0x4 {input} > {output.out1} && samtools view -Sb -F0x4 {input} > {output.out2}"
+    rule fastq_extract_parasite:
+        input:
+            in1 = expand("uploads/res/dbsub/{sample}_Parasite_umapped.bam", sample=SAMPLE[1][0:-2]),
+            in2 = expand("uploads/res/dbsub/{sample}_Parasite_mapped.bam", sample=SAMPLE[1][0:-2]),
+            in3 = expand("uploads/res/dbsub/{sample}_Human_umapped.bam", sample=SAMPLE[1][0:-2]),
+            in4 = expand("uploads/res/dbsub/{sample}_Human_mapped.bam", sample=SAMPLE[1][0:-2])
+        output:
+            out1 = expand("uploads/res/dbsub/{sample}_Parasite_umapped_R1.fastq", sample=SAMPLE[1][0:-2]),
+            out2 = expand("uploads/res/dbsub/{sample}_Parasite_umapped_R2.fastq", sample=SAMPLE[1][0:-2]),
+            out3 = expand("uploads/res/dbsub/{sample}_Parasite_mapped_R1.fastq", sample=SAMPLE[1][0:-2]),
+            out4 = expand("uploads/res/dbsub/{sample}_Parasite_mapped_R2.fastq", sample=SAMPLE[1][0:-2]),
+            out5 = expand("uploads/res/dbsub/{sample}_Human_umapped_R1.fastq", sample=SAMPLE[1][0:-2]),
+            out6 = expand("uploads/res/dbsub/{sample}_Human_umapped_R2.fastq", sample=SAMPLE[1][0:-2]),
+            out7 = expand("uploads/res/dbsub/{sample}_Human_mapped_R1.fastq", sample=SAMPLE[1][0:-2]),
+            out8 = expand("uploads/res/dbsub/{sample}_Human_mapped_R2.fastq", sample=SAMPLE[1][0:-2])
+        shell:
+            "samtools bam2fq -1 {output.out1} -2 {output.out2} -0 /dev/null -s /dev/null -n -F 0x900 {input.in1} && samtools bam2fq -1 {output.out3} -2 {output.out4} -0 /dev/null -s /dev/null -n -F 0x900 {input.in2} && samtools bam2fq -1 {output.out1} -2 {output.out2} -0 /dev/null -s /dev/null -n -F 0x900 {input.in1} && samtools bam2fq -1 {output.out3} -2 {output.out4} -0 /dev/null -s /dev/null -n -F 0x900 {input.in2}"
+
